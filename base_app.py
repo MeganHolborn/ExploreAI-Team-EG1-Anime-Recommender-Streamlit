@@ -1,24 +1,7 @@
 """
 
-    Simple Streamlit webserver application for serving developed classification
+    Simple Streamlit webserver application for serving developed recommender
 	models.
-
-    Author: ExploreAI Academy.
-
-    Note:
-    ---------------------------------------------------------------------
-    Please follow the instructions provided within the README.md file
-    located within this directory for guidance on how to use this script
-    correctly.
-    ---------------------------------------------------------------------
-
-    Description: This file is used to launch a minimal streamlit web
-	application. You are expected to extend the functionality of this script
-	as part of your predict project.
-
-	For further help with the Streamlit framework, see:
-
-	https://docs.streamlit.io/en/latest/
 
 """
 
@@ -32,44 +15,51 @@ import pandas as pd
 # Streamlit dependencies
 import streamlit as st
 
-# Vectorizer
-# news_vectorizer = open("streamlit/tfidfvect.pkl","rb")
-# test_cv = joblib.load(news_vectorizer) # loading your vectorizer from the pkl file
-
 # Load your raw data
 # raw = pd.read_csv("streamlit/train.csv")
 
 
 # The main function where we will build the actual app
 def main():
-    """News Classifier App with Streamlit"""
+    """Anime Recommender System"""
 
     # Creates a main title and subheader on your page -
     # these are static across all pages
-    st.title("News Classifer")
-    st.subheader("Analysing news articles")
+    st.title("Recommend Anime")
+    st.subheader("Your Next Binge-Watch Awaits")
 
     # Creating sidebar with selection box -
     # you can create multiple pages this way
-    options = ["Prediction", "Information"]
+    options = ["Recommend Anime", "About"]
     selection = st.sidebar.selectbox("Choose Option", options)
 
-    # Building out the "Information" page
-    if selection == "Information":
-        st.info("General Information")
+    # Building out the "About" page
+    if selection == "About":
         # You can read a markdown file from supporting resources folder
         st.markdown("Some information here")
 
-    # Building out the predication page
-    if selection == "Prediction":
-        st.info("Prediction with ML Models")
-        # Creating a text box for user input
-        news_text = st.text_area("Enter Text", "Type Here")
+    # Building out the "Recommend Anime" page
+    if selection == "Recommend Anime":
+        st.info(
+            "Get personalised recommendations based on your favourite shows and genres."
+        )
 
-        if st.button("Classify"):
+        # # Creating a text box for user input
+        # text = st.text_area("Enter Text", "Type Here")
+
+        # Create a anime title selection box
+        anime_titles = ["Fullmetal Alchemist: Brotherhood", "Mushishi Zoku Shou"]
+        st.selectbox("Select an anime", anime_titles)
+
+        # Create a genre selection box
+        genres = ["Action", "Adventure"]
+        st.selectbox("Select a genre", genres)
+
+        if st.button("Recommend"):
+
             # Transforming user input with vectorizer
             test_cv = ""
-            vect_text = test_cv.transform([news_text]).toarray()
+            vect_text = test_cv.transform([text]).toarray()
             # Load your .pkl file with the model of your choice + make predictions
             # Try loading in multiple models to give the user a choice
             predictor = joblib.load(
