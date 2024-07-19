@@ -1,7 +1,6 @@
 """
 
-    Simple Streamlit webserver application for serving developed recommender
-	models.
+    Streamlit webserver application for generating user ratings based on historical preferences.
 
 """
 
@@ -26,34 +25,35 @@ def main():
     # Creates a main title and subheader on your page -
     # these are static across all pages
     st.title("Recommend Anime")
-    st.subheader("Your Next Binge-Watch Awaits")
 
     # Creating sidebar with selection box -
     # you can create multiple pages this way
-    options = ["Recommend Anime", "About"]
+    options = ["About", "Get Recommendations", "Predicted Ratings"]
     selection = st.sidebar.selectbox("Choose Option", options)
 
     # Building out the "About" page
     if selection == "About":
+
+        st.subheader("Your Next Binge-Watch Awaits")
         # You can read a markdown file from supporting resources folder
         st.markdown("Some information here")
 
-    # Building out the "Recommend Anime" page
-    if selection == "Recommend Anime":
+    # Building out the "Get Recommendations" page
+    if selection == "Get Recommendations":
         st.info(
             "Get personalised recommendations based on your favourite shows and genres."
         )
 
-        # # Creating a text box for user input
-        # text = st.text_area("Enter Text", "Type Here")
-
-        # Create a anime title selection box
-        anime_titles = ["Fullmetal Alchemist: Brotherhood", "Mushishi Zoku Shou"]
-        st.selectbox("Select an anime", anime_titles)
+        # Creating a text box for user input
+        text = st.text_area("Enter User ID", "Type Here")
 
         # Create a genre selection box
         genres = ["Action", "Adventure"]
-        st.selectbox("Select a genre", genres)
+        st.selectbox("Select Genre", genres)
+
+        # Create a number of recommendations selection box
+        nums = ["1", "2"]
+        st.selectbox("Number of Recommendations", nums)
 
         if st.button("Recommend"):
 
@@ -71,6 +71,19 @@ def main():
             # You can use a dictionary or similar structure to make this output
             # more human interpretable.
             st.success("Text Categorized as: {}".format(prediction))
+
+    # Building out the "Predicted Ratings" page
+    if selection == "Predicted Ratings":
+        st.info(
+            "Predict what rating you would give an anime you haven't watched before."
+        )
+
+        # Creating a text box for user input
+        text = st.text_area("Enter User ID", "Type Here")
+
+        # Create a anime title selection box
+        anime_titles = ["Fullmetal Alchemist: Brotherhood", "Mushishi Zoku Shou"]
+        st.selectbox("Select Anime/s", anime_titles)
 
 
 # Required to let Streamlit instantiate our web app.
