@@ -13,6 +13,7 @@ import pandas as pd
 
 # Streamlit dependencies
 import streamlit as st
+from PIL import Image
 
 # Load your raw data
 # raw = pd.read_csv("streamlit/train.csv")
@@ -22,24 +23,62 @@ import streamlit as st
 def main():
     """Anime Recommender System"""
 
-    # Creates a main title and subheader on your page -
-    # these are static across all pages
-    st.title("Recommend Anime")
+    # Creating sidebar with logo and navigation
+    image = Image.open("Animex.png")
+    st.sidebar.image(image)
 
-    # Creating sidebar with selection box -
-    # you can create multiple pages this way
-    options = ["About", "Get Recommendations", "Predicted Ratings"]
-    selection = st.sidebar.selectbox("Choose Option", options)
+    options = [
+        "About",
+        "Predict Your Ratings",
+        "Your Recommendations",
+        "Behind the Scenes",
+    ]
+
+    selection = st.sidebar.radio("Navigate To", options)
 
     # Building out the "About" page
     if selection == "About":
 
-        st.subheader("Your Next Binge-Watch Awaits")
-        # You can read a markdown file from supporting resources folder
+        # Create a banner
+
+        # Add a title and banner
+        st.image(
+            "https://blog.playstation.com/tachyon/2016/10/unnamed-file-6.jpg",
+            use_column_width=True,
+        )
+
+        st.title("Personalized Anime Recommender")
+        st.divider()
+
+        # Add information divided by subsections
+        st.subheader(":grey[Introduction]")
         st.markdown("Some information here")
 
+        st.subheader(":grey[App Features]")
+        st.markdown("Some information here")
+
+        st.subheader(":grey[How to Use the App]")
+        st.markdown("Some information here")
+
+        st.subheader(":grey[Meet the Team]")
+        st.markdown("Some information here")
+
+        # Add footer with contact information
+        footer_html = """<div style='text-align: center;'>
+        <p>Developed by Animex Analytics | Contact us at: info@animexanalytics.com</p>
+        </div>"""
+        st.markdown("#")
+        st.divider()
+        st.markdown(footer_html, unsafe_allow_html=True)
+
     # Building out the "Get Recommendations" page
-    if selection == "Get Recommendations":
+    if selection == "Your Recommendations":
+
+        # Add a title and divider
+        st.title("Your Recommendations")
+        st.divider()
+
+        # Add an information box
         st.info(
             "Get personalised recommendations based on your favourite shows and genres."
         )
@@ -52,28 +91,43 @@ def main():
         st.selectbox("Select Genre", genres)
 
         # Create a number of recommendations selection box
-        nums = ["1", "2"]
-        st.selectbox("Number of Recommendations", nums)
+        st.slider(
+            "Number of Recommendations",
+            1,
+            30,
+        )
 
-        if st.button("Recommend"):
+        if st.button("Get Recommendations"):
 
             # Transforming user input with vectorizer
             test_cv = ""
             vect_text = test_cv.transform([text]).toarray()
+
             # Load your .pkl file with the model of your choice + make predictions
-            # Try loading in multiple models to give the user a choice
             predictor = joblib.load(
                 open(os.path.join("streamlit/Logistic_regression.pkl"), "rb")
             )
             prediction = predictor.predict(vect_text)
 
             # When model has successfully run, will print prediction
-            # You can use a dictionary or similar structure to make this output
-            # more human interpretable.
             st.success("Text Categorized as: {}".format(prediction))
 
+        # Add footer with contact information
+        footer_html = """<div style='text-align: center;'>
+        <p>Developed by Animex Analytics | Contact us at: info@animexanalytics.com</p>
+        </div>"""
+        st.markdown("#")
+        st.divider()
+        st.markdown(footer_html, unsafe_allow_html=True)
+
     # Building out the "Predicted Ratings" page
-    if selection == "Predicted Ratings":
+    if selection == "Predict Your Ratings":
+
+        # Add a title and divider
+        st.title("Predict Your Ratings")
+        st.divider()
+
+        # Add an information box
         st.info(
             "Predict what rating you would give an anime you haven't watched before."
         )
@@ -84,6 +138,51 @@ def main():
         # Create a anime title selection box
         anime_titles = ["Fullmetal Alchemist: Brotherhood", "Mushishi Zoku Shou"]
         st.selectbox("Select Anime/s", anime_titles)
+
+        if st.button("Get Ratings"):
+
+            # Transforming user input with vectorizer
+            test_cv = ""
+            vect_text = test_cv.transform([text]).toarray()
+
+            # Load your .pkl file with the model of your choice + make predictions
+            predictor = joblib.load(
+                open(os.path.join("streamlit/Logistic_regression.pkl"), "rb")
+            )
+            prediction = predictor.predict(vect_text)
+
+            # When model has successfully run, will print prediction
+            st.success("Text Categorized as: {}".format(prediction))
+
+        # Add footer with contact information
+        footer_html = """<div style='text-align: center;'>
+        <p>Developed by Animex Analytics | Contact us at: info@animexanalytics.com</p>
+        </div>"""
+        st.markdown("#")
+        st.divider()
+        st.markdown(footer_html, unsafe_allow_html=True)
+
+    # Building out the "Behind the Scenes" page
+    if selection == "Behind the Scenes":
+
+        # Add a title
+        st.title("Behind the Scenes")
+        st.divider()
+
+        # Add information divided by subsections
+        st.subheader(":grey[Project Methods]")
+        st.markdown("Some information here")
+
+        st.subheader(":grey[Future Work]")
+        st.markdown("Some information here")
+
+        # Add footer with contact information
+        footer_html = """<div style='text-align: center;'>
+        <p>Developed by Animex Analytics | Contact us at: info@animexanalytics.com</p>
+        </div>"""
+        st.markdown("#")
+        st.divider()
+        st.markdown(footer_html, unsafe_allow_html=True)
 
 
 # Required to let Streamlit instantiate our web app.
