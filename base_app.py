@@ -65,7 +65,7 @@ def main():
 
         # Add footer with contact information
         footer_html = """<div style='text-align: center;'>
-        <p>Developed by Animex Analytics | Contact us at: info@animexanalytics.com</p>
+        <p>Developed by Kawaii Consulting | Contact us at: info@kawaiiconsulting.com</p>
         </div>"""
         st.markdown("#")
         st.divider()
@@ -114,7 +114,7 @@ def main():
 
         # Add footer with contact information
         footer_html = """<div style='text-align: center;'>
-        <p>Developed by Animex Analytics | Contact us at: info@animexanalytics.com</p>
+        <p>Developed by Kawaii Consulting | Contact us at: info@kawaiiconsulting.com</p>
         </div>"""
         st.markdown("#")
         st.divider()
@@ -156,7 +156,7 @@ def main():
 
         # Add footer with contact information
         footer_html = """<div style='text-align: center;'>
-        <p>Developed by Animex Analytics | Contact us at: info@animexanalytics.com</p>
+        <p>Developed by Kawaii Consulting | Contact us at: info@kawaiiconsulting.com</p>
         </div>"""
         st.markdown("#")
         st.divider()
@@ -178,7 +178,7 @@ def main():
 
         # Add footer with contact information
         footer_html = """<div style='text-align: center;'>
-        <p>Developed by Animex Analytics | Contact us at: info@animexanalytics.com</p>
+        <p>Developed by Kawaii Consulting | Contact us at: info@kawaiiconsulting.com</p>
         </div>"""
         st.markdown("#")
         st.divider()
