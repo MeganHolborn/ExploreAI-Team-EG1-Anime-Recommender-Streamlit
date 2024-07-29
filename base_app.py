@@ -4,19 +4,89 @@
 
 """
 
+# Import dependencies
 import os
 
 import joblib
-
-# Data dependencies
+import numpy as np
 import pandas as pd
-
-# Streamlit dependencies
 import streamlit as st
 from PIL import Image
 
-# Load your raw data
-# raw = pd.read_csv("streamlit/train.csv")
+# Load data
+anime_data = pd.read_csv(r"anime.csv")
+user_ratings = pd.read_csv(r"train.csv")
+util_matrix_norm = joblib.load(open(os.path.join(r"util_matrix_norm.pkl"), "rb"))
+util_matrix_filtered = joblib.load(
+    open(os.path.join(r"util_matrix_filtered.pkl"), "rb")
+)
+
+# Load models
+model_knn = joblib.load(open(os.path.join(r"model_knn.pkl"), "rb"))
+
+
+# Function to predict user ratings
+def predict_rating(user_id, anime_id, sim_threshold=0.0):
+
+    try:
+        # Select the normalised review data for the user of interest
+        user_data = util_matrix_norm.loc[user_id].to_numpy().reshape(1, -1)
+
+        # Determine the indices of the similar users and their cosine distances from the user of interest
+        sim_distances, sim_user_indices = model_knn.kneighbors(
+            user_data, n_neighbors=21
+        )
+
+        # Calculate the similarity scores of the similar users (sim score = 1-distance), convert to a list and remove the first element
+        sim_scores = (1 - sim_distances)[0].tolist()
+        sim_scores.pop(0)
+
+        # Convert the indices for similar users to a list and remove the first element
+        sim_user_indices = sim_user_indices[0].tolist()
+        sim_user_indices.pop(0)
+
+        # Retrieve the ids of the similar users using the list of indices
+        sim_user_ids = (
+            util_matrix_norm.reset_index()
+            .iloc[sim_user_indices]["user_id"]
+            .values.tolist()
+        )
+
+        ratings = []
+        weights = []
+
+        # For every index, id in user_ids
+        for i, sim_user_id in enumerate(sim_user_ids):
+
+            # Get the similar user's rating for the anime of interest
+            rating = util_matrix_filtered.loc[sim_user_id, anime_id]
+
+            # Get the user's similarity score using the index value
+            sim_score = sim_scores[i]
+
+            # Check whether the user rating is valid and whether the user's similarity to the user of interest is above a defined threshold
+            # If checks are passed, append weighted rating and similarity score to lists, else skip the user
+            if not pd.isnull(rating) and sim_score > sim_threshold:
+                ratings.append(rating * sim_score)
+                weights.append(sim_score)
+
+        try:
+            # Calculate the predicted rating for the user of interest
+            predicted_rating = sum(ratings) / sum(weights)
+
+        except ZeroDivisionError:
+            # If there are no valid ratings, return the average predicted rating given by all users
+            predicted_rating = anime_data[anime_data["anime_id"] == anime_id][
+                "rating"
+            ].values[0]
+
+    except KeyError:
+        # If the user ID or anime ID was not present in the training data, return the average predicted given by all users
+        predicted_rating = anime_data[anime_data["anime_id"] == anime_id][
+            "rating"
+        ].values[0]
+
+    return predicted_rating
 
 
 # The main function where we will build the actual app
@@ -133,26 +203,39 @@ def main():
         )
 
         # Creating a text box for user input
-        text = st.text_area("Enter User ID", "Type Here")
+        user_id = st.number_input(
+            "Enter your User ID. If invalid, the overall average rating will be returned.",
+            value=None,
+            placeholder="User ID",
+            step=1,
+        )
 
         # Create a anime title selection box
-        anime_titles = ["Fullmetal Alchemist: Brotherhood", "Mushishi Zoku Shou"]
-        st.selectbox("Select Anime/s", anime_titles)
 
-        if st.button("Get Ratings"):
+        # Get a list of all animes
+        anime_ids = anime_data["anime_id"].unique()
 
-            # Transforming user input with vectorizer
-            test_cv = ""
-            vect_text = test_cv.transform([text]).toarray()
+        # Select anime that the user has not rated
+        rated_anime_ids = user_ratings[user_ratings["user_id"] == user_id][
+            "anime_id"
+        ].unique()
 
-            # Load your .pkl file with the model of your choice + make predictions
-            predictor = joblib.load(
-                open(os.path.join("streamlit/Logistic_regression.pkl"), "rb")
-            )
-            prediction = predictor.predict(vect_text)
+        unrated_anime = anime_data[~anime_data["anime_id"].isin(rated_anime_ids)][
+            "name"
+        ].unique()
 
-            # When model has successfully run, will print prediction
-            st.success("Text Categorized as: {}".format(prediction))
+        selected_anime = st.selectbox("Select an Anime", unrated_anime)
+
+        # Get the user's predicted rating for the selected anime
+        if st.button("Predict Your Ratings"):
+
+            selected_anime_id = anime_data[anime_data["name"] == str(selected_anime)][
+                "anime_id"
+            ].values[0]
+
+            prediction = predict_rating(user_id, selected_anime_id)
+
+            st.write("Predicted Rating:", prediction)
 
         # Add footer with contact information
         footer_html = """<div style='text-align: center;'>
