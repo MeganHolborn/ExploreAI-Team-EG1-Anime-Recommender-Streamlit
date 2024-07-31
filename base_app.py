@@ -1,92 +1,75 @@
 """
-
-    Streamlit webserver application for generating user ratings based on historical preferences.
-
+    A Streamlit webserver application for generating user ratings based on historical preferences.
 """
 
 # Import dependencies
 import os
+import re
+import string
+import time
 
 import joblib
 import numpy as np
 import pandas as pd
 import streamlit as st
 from PIL import Image
+from recommenders.models.surprise.surprise_utils import predict
 
 # Load data
-anime_data = pd.read_csv(r"anime.csv")
-user_ratings = pd.read_csv(r"train.csv")
-util_matrix_norm = joblib.load(open(os.path.join(r"util_matrix_norm.pkl"), "rb"))
-util_matrix_filtered = joblib.load(
-    open(os.path.join(r"util_matrix_filtered.pkl"), "rb")
-)
+anime_data = pd.read_csv(r"data/anime.csv")
+train_data = pd.read_csv(r"data/train.csv")
 
-# Load models
-model_knn = joblib.load(open(os.path.join(r"model_knn.pkl"), "rb"))
+# Load pickled models
+collab_svd_tuned = pd.read_pickle(r"pickles/collab_svd_tuned.pkl")
 
 
-# Function to predict user ratings
-def predict_rating(user_id, anime_id, sim_threshold=0.0):
+# Function to clean anime titles
+def clean_titles(name):
+    return re.sub("[^a-zA-Z0-9 ]", " ", name)
 
-    try:
-        # Select the normalised review data for the user of interest
-        user_data = util_matrix_norm.loc[user_id].to_numpy().reshape(1, -1)
 
-        # Determine the indices of the similar users and their cosine distances from the user of interest
-        sim_distances, sim_user_indices = model_knn.kneighbors(
-            user_data, n_neighbors=21
-        )
+# Function to generate rating predictions using a collaborative recommender
+def generate_predictions(user_ids: list, anime_ids: list, model):
+    # Generate predictions
+    data = pd.DataFrame()
+    data["anime_id"] = anime_ids
+    data["user_id"] = user_ids
+    start_time = time.time()
+    svd_predictions = predict(
+        collab_svd_tuned, data, usercol="user_id", itemcol="anime_id"
+    )
+    pred_time = time.time() - start_time
 
-        # Calculate the similarity scores of the similar users (sim score = 1-distance), convert to a list and remove the first element
-        sim_scores = (1 - sim_distances)[0].tolist()
-        sim_scores.pop(0)
+    # Format the data
+    svd_predictions["ID"] = (
+        svd_predictions["user_id"].astype(str)
+        + "_"
+        + svd_predictions["anime_id"].astype(str)
+    )
+    svd_predictions["rating"] = round(svd_predictions["prediction"], 2)
+    svd_predictions = svd_predictions[["ID", "rating"]]
 
-        # Convert the indices for similar users to a list and remove the first element
-        sim_user_indices = sim_user_indices[0].tolist()
-        sim_user_indices.pop(0)
+    return svd_predictions, pred_time
 
-        # Retrieve the ids of the similar users using the list of indices
-        sim_user_ids = (
-            util_matrix_norm.reset_index()
-            .iloc[sim_user_indices]["user_id"]
-            .values.tolist()
-        )
 
-        ratings = []
-        weights = []
+# Function to generate n recommendations using a collaborative recommender
+def get_recommendations(user_id: int, model, n):
+    # Get a list of all items
+    all_items = list(
+        train_data[~(train_data["user_id"] == user_id)]["anime_id"].unique()
+    )
 
-        # For every index, id in user_ids
-        for i, sim_user_id in enumerate(sim_user_ids):
+    # Predict ratings for all items for the given user
+    test_data = pd.DataFrame(columns=["user_id", "anime_id"])
+    test_data["anime_id"] = all_items
+    test_data["user_id"] = user_id
+    predictions = predict(model, test_data, usercol="user_id", itemcol="anime_id")
 
-            # Get the similar user's rating for the anime of interest
-            rating = util_matrix_filtered.loc[sim_user_id, anime_id]
-
-            # Get the user's similarity score using the index value
-            sim_score = sim_scores[i]
-
-            # Check whether the user rating is valid and whether the user's similarity to the user of interest is above a defined threshold
-            # If checks are passed, append weighted rating and similarity score to lists, else skip the user
-            if not pd.isnull(rating) and sim_score > sim_threshold:
-                ratings.append(rating * sim_score)
-                weights.append(sim_score)
-
-        try:
-            # Calculate the predicted rating for the user of interest
-            predicted_rating = sum(ratings) / sum(weights)
-
-        except ZeroDivisionError:
-            # If there are no valid ratings, return the average predicted rating given by all users
-            predicted_rating = anime_data[anime_data["anime_id"] == anime_id][
-                "rating"
-            ].values[0]
-
-    except KeyError:
-        # If the user ID or anime ID was not present in the training data, return the average predicted given by all users
-        predicted_rating = anime_data[anime_data["anime_id"] == anime_id][
-            "rating"
-        ].values[0]
-
-    return predicted_rating
+    # Sort predictions by estimated rating
+    recommendations = predictions.sort_values(by="prediction", ascending=False).iloc[
+        :n, :
+    ]
+    return recommendations
 
 
 # The main function where we will build the actual app
@@ -153,34 +136,53 @@ def main():
             "Get personalised recommendations based on your favourite shows and genres."
         )
 
-        # Creating a text box for user input
-        text = st.text_area("Enter User ID", "Type Here")
+        # Creating a box for User ID input
+        user_id = st.number_input(
+            "Enter a valid User ID",
+            value=None,
+            placeholder="User ID",
+            step=1,
+        )
 
-        # Create a genre selection box
-        genres = ["Action", "Adventure"]
-        st.selectbox("Select Genre", genres)
+        try:
+            # Check if the user_id exists in the training data
+            if user_id in train_data["user_id"].values:
+                pass
+            else:
+                # Raise a ValueError if the user_id is not found
+                raise ValueError("User ID not found")
+        except ValueError as e:
+            # Display an error message in Streamlit
+            st.error(str(e))
 
-        # Create a number of recommendations selection box
-        st.slider(
+        # Select number of recommendations
+        n_recommendations = st.slider(
             "Number of Recommendations",
             1,
             30,
         )
 
+        # Generate recommendations
         if st.button("Get Recommendations"):
 
-            # Transforming user input with vectorizer
-            test_cv = ""
-            vect_text = test_cv.transform([text]).toarray()
-
-            # Load your .pkl file with the model of your choice + make predictions
-            predictor = joblib.load(
-                open(os.path.join("streamlit/Logistic_regression.pkl"), "rb")
+            recommended_anime = get_recommendations(
+                user_id, collab_svd_tuned, n_recommendations
             )
-            prediction = predictor.predict(vect_text)
+
+            recommended_anime = pd.merge(
+                recommended_anime[["anime_id", "prediction"]],
+                anime_data[["anime_id", "name"]],
+            )
+
+            recommended_anime = recommended_anime[["name", "prediction"]].rename(
+                columns={"name": "Anime Title", "prediction": "Predicted Rating"}
+            )
+
+            recommended_anime.reset_index(drop=True, inplace=True)
 
             # When model has successfully run, will print prediction
-            st.success("Text Categorized as: {}".format(prediction))
+            st.text("Your Recommended Anime:")
+            st.table(recommended_anime)
 
         # Add footer with contact information
         footer_html = """<div style='text-align: center;'>
@@ -202,29 +204,34 @@ def main():
             "Predict what rating you would give an anime you haven't watched before."
         )
 
-        # Creating a text box for user input
+        # Creating a box for User ID input
         user_id = st.number_input(
-            "Enter your User ID. If invalid, the overall average rating will be returned.",
+            "Enter a valid User ID",
             value=None,
             placeholder="User ID",
             step=1,
         )
 
-        # Create a anime title selection box
+        try:
+            # Check if the user_id exists in the training data
+            if user_id in train_data["user_id"].values:
+                # Get a list of items that the user has not rated before
+                unrated_anime = list(
+                    train_data[train_data["user_id"] != user_id]["anime_id"].unique()
+                )
 
-        # Get a list of all animes
-        anime_ids = anime_data["anime_id"].unique()
+                unrated_anime_titles = anime_data[
+                    anime_data["anime_id"].isin(unrated_anime)
+                ]["name"].unique()
 
-        # Select anime that the user has not rated
-        rated_anime_ids = user_ratings[user_ratings["user_id"] == user_id][
-            "anime_id"
-        ].unique()
-
-        unrated_anime = anime_data[~anime_data["anime_id"].isin(rated_anime_ids)][
-            "name"
-        ].unique()
-
-        selected_anime = st.selectbox("Select an Anime", unrated_anime)
+                # Create an anime title selection box
+                selected_anime = st.selectbox("Select an Anime", unrated_anime_titles)
+            else:
+                # Raise a ValueError if the user_id is not found
+                raise ValueError("User ID not found")
+        except ValueError as e:
+            # Display an error message in Streamlit
+            st.error(str(e))
 
         # Get the user's predicted rating for the selected anime
         if st.button("Predict Your Ratings"):
@@ -233,7 +240,11 @@ def main():
                 "anime_id"
             ].values[0]
 
-            prediction = predict_rating(user_id, selected_anime_id)
+            prediction, prediction_time = generate_predictions(
+                [user_id], [selected_anime_id], collab_svd_tuned
+            )
+
+            prediction = prediction["rating"].values[0]
 
             st.write("Predicted Rating:", prediction)
 
