@@ -109,6 +109,12 @@ def main():
         st.markdown(about_markdown, unsafe_allow_html=True)
 
         # Add footer with contact information
+        footer_html = """<div style='text-align: center;'>
+        <p>Developed by Kawaii Consultants| Contact us at: info@kawaiiconsultants.com</p>
+        </div>"""
+        st.markdown("#")
+        st.divider()
+        st.markdown(footer_html, unsafe_allow_html=True)
         image_kawaii = Image.open("images/Kawaii.png")
         left_co, cent_co, last_co = st.columns(3)
         with cent_co:
