@@ -7,6 +7,7 @@ import os
 import re
 import string
 import time
+from pathlib import Path
 
 import joblib
 import numpy as np
@@ -26,6 +27,11 @@ collab_svd_tuned = pd.read_pickle(r"pickles/collab_svd_tuned.pkl")
 # Function to clean anime titles
 def clean_titles(name):
     return re.sub("[^a-zA-Z0-9 ]", " ", name)
+
+
+# Function to read markdown files
+def read_markdown(file_path):
+    return Path(file_path).read_text()
 
 
 # Function to generate rating predictions using a collaborative recommender
@@ -72,13 +78,13 @@ def get_recommendations(user_id: int, model, n):
     return recommendations
 
 
-# The main function where we will build the actual app
+# The main function to build the app
 def main():
     """Anime Recommender System"""
 
     # Creating sidebar with logo and navigation
-    image = Image.open("Animex.png")
-    st.sidebar.image(image)
+    image_animeflix = Image.open("images/Anime-Flix.png")
+    st.sidebar.image(image_animeflix)
 
     options = [
         "About",
@@ -92,37 +98,88 @@ def main():
     # Building out the "About" page
     if selection == "About":
 
-        # Create a banner
-
         # Add a title and banner
         st.image(
             "https://blog.playstation.com/tachyon/2016/10/unnamed-file-6.jpg",
             use_column_width=True,
         )
 
-        st.title("Personalized Anime Recommender")
-        st.divider()
-
-        # Add information divided by subsections
-        st.subheader(":grey[Introduction]")
-        st.markdown("Some information here")
-
-        st.subheader(":grey[App Features]")
-        st.markdown("Some information here")
-
-        st.subheader(":grey[How to Use the App]")
-        st.markdown("Some information here")
-
-        st.subheader(":grey[Meet the Team]")
-        st.markdown("Some information here")
+        # Add body text divided by subsections
+        about_markdown = read_markdown("markdown/about.md")
+        st.markdown(about_markdown, unsafe_allow_html=True)
 
         # Add footer with contact information
+        image_kawaii = Image.open("images/Kawaii.png")
+        left_co, cent_co, last_co = st.columns(3)
+        with cent_co:
+            st.image(image_kawaii)
+
+    # Building out the "Predicted Ratings" page
+    if selection == "Predict Your Ratings":
+
+        # Add a title and divider
+        st.title("Predict Your Ratings")
+        st.divider()
+
+        # Add an information box
+        st.info(
+            "Predict what rating you would give an anime you haven't watched before."
+        )
+
+        # Creating a box for User ID input
+        user_id = st.number_input(
+            "Enter a valid User ID",
+            value=None,
+            placeholder="User ID",
+            step=1,
+        )
+
+        try:
+            # Check if the user_id exists in the training data
+            if user_id in train_data["user_id"].values:
+                # Get a list of items that the user has not rated before
+                unrated_anime = list(
+                    train_data[train_data["user_id"] != user_id]["anime_id"].unique()
+                )
+
+                unrated_anime_titles = anime_data[
+                    anime_data["anime_id"].isin(unrated_anime)
+                ]["name"].unique()
+
+                # Create an anime title selection box
+                selected_anime = st.selectbox("Select an Anime", unrated_anime_titles)
+            else:
+                # Raise a ValueError if the user_id is not found
+                raise ValueError("User ID not found")
+        except ValueError as e:
+            # Display an error message in Streamlit
+            st.error(str(e))
+
+        # Get the user's predicted rating for the selected anime
+        if st.button("Predict Your Ratings"):
+
+            selected_anime_id = anime_data[anime_data["name"] == str(selected_anime)][
+                "anime_id"
+            ].values[0]
+
+            prediction, prediction_time = generate_predictions(
+                [user_id], [selected_anime_id], collab_svd_tuned
+            )
+
+            prediction = prediction["rating"].values[0]
+
+            st.write("Predicted Rating:", prediction)
+        # Add footer with contact information
         footer_html = """<div style='text-align: center;'>
-        <p>Developed by Kawaii Consulting | Contact us at: info@kawaiiconsulting.com</p>
+        <p>Developed by Kawaii Consultants| Contact us at: info@kawaiiconsultants.com</p>
         </div>"""
         st.markdown("#")
         st.divider()
         st.markdown(footer_html, unsafe_allow_html=True)
+        image_kawaii = Image.open("images/Kawaii.png")
+        left_co, cent_co, last_co = st.columns(3)
+        with cent_co:
+            st.image(image_kawaii)
 
     # Building out the "Get Recommendations" page
     if selection == "Your Recommendations":
@@ -186,97 +243,42 @@ def main():
 
         # Add footer with contact information
         footer_html = """<div style='text-align: center;'>
-        <p>Developed by Kawaii Consulting | Contact us at: info@kawaiiconsulting.com</p>
+        <p>Developed by Kawaii Consultants | Contact us at: info@kawaiiconsultants.com</p>
         </div>"""
         st.markdown("#")
         st.divider()
         st.markdown(footer_html, unsafe_allow_html=True)
-
-    # Building out the "Predicted Ratings" page
-    if selection == "Predict Your Ratings":
-
-        # Add a title and divider
-        st.title("Predict Your Ratings")
-        st.divider()
-
-        # Add an information box
-        st.info(
-            "Predict what rating you would give an anime you haven't watched before."
-        )
-
-        # Creating a box for User ID input
-        user_id = st.number_input(
-            "Enter a valid User ID",
-            value=None,
-            placeholder="User ID",
-            step=1,
-        )
-
-        try:
-            # Check if the user_id exists in the training data
-            if user_id in train_data["user_id"].values:
-                # Get a list of items that the user has not rated before
-                unrated_anime = list(
-                    train_data[train_data["user_id"] != user_id]["anime_id"].unique()
-                )
-
-                unrated_anime_titles = anime_data[
-                    anime_data["anime_id"].isin(unrated_anime)
-                ]["name"].unique()
-
-                # Create an anime title selection box
-                selected_anime = st.selectbox("Select an Anime", unrated_anime_titles)
-            else:
-                # Raise a ValueError if the user_id is not found
-                raise ValueError("User ID not found")
-        except ValueError as e:
-            # Display an error message in Streamlit
-            st.error(str(e))
-
-        # Get the user's predicted rating for the selected anime
-        if st.button("Predict Your Ratings"):
-
-            selected_anime_id = anime_data[anime_data["name"] == str(selected_anime)][
-                "anime_id"
-            ].values[0]
-
-            prediction, prediction_time = generate_predictions(
-                [user_id], [selected_anime_id], collab_svd_tuned
-            )
-
-            prediction = prediction["rating"].values[0]
-
-            st.write("Predicted Rating:", prediction)
-
-        # Add footer with contact information
-        footer_html = """<div style='text-align: center;'>
-        <p>Developed by Kawaii Consulting | Contact us at: info@kawaiiconsulting.com</p>
-        </div>"""
-        st.markdown("#")
-        st.divider()
-        st.markdown(footer_html, unsafe_allow_html=True)
+        image_kawaii = Image.open("images/Kawaii.png")
+        left_co, cent_co, last_co = st.columns(3)
+        with cent_co:
+            st.image(image_kawaii)
 
     # Building out the "Behind the Scenes" page
     if selection == "Behind the Scenes":
 
-        # Add a title
-        st.title("Behind the Scenes")
-        st.divider()
+        # Add body text divided by subsections
+        about_markdown = read_markdown("markdown/behind_the_scenes_p1.md")
+        st.markdown(about_markdown, unsafe_allow_html=True)
 
-        # Add information divided by subsections
-        st.subheader(":grey[Project Methods]")
-        st.markdown("Some information here")
+        image_anime_type = Image.open("images/Anime_type_distr.png")
+        st.image(image_anime_type)
 
-        st.subheader(":grey[Future Work]")
-        st.markdown("Some information here")
+        st.markdown(
+            "The bar plot below highlights the most popular anime within the community. It is likely that these anime will frequent user recommendations. `Death Note` is the most popular anime, followed by `Shingeki no Kyojin` and `Sword Art Online`. The top 10 anime have large followings, with member counts from around 600,000 to nearly 1 million."
+        )
+
+        image_pop_anime = Image.open("images/Pop_anime.png")
+        st.image(image_pop_anime)
+
+        # Add body text divided by subsections
+        about_markdown = read_markdown("markdown/behind_the_scenes_p2.md")
+        st.markdown(about_markdown, unsafe_allow_html=True)
 
         # Add footer with contact information
-        footer_html = """<div style='text-align: center;'>
-        <p>Developed by Kawaii Consulting | Contact us at: info@kawaiiconsulting.com</p>
-        </div>"""
-        st.markdown("#")
-        st.divider()
-        st.markdown(footer_html, unsafe_allow_html=True)
+        image_kawaii = Image.open("images/Kawaii.png")
+        left_co, cent_co, last_co = st.columns(3)
+        with cent_co:
+            st.image(image_kawaii)
 
 
 # Required to let Streamlit instantiate our web app.
