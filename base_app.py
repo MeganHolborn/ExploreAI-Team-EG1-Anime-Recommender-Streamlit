@@ -78,6 +78,17 @@ def get_recommendations(user_id: int, model, n):
     return recommendations
 
 
+# Custom function to format anime titles
+def format_anime_title(title):
+    title = re.sub(r"[^A-Za-z0-9\s:]", "", title)
+    title = title.title().strip()
+    return title
+
+
+# Apply the custom function to 'name' column of anime_data
+anime_data["name"] = anime_data["name"].apply(format_anime_title)
+
+
 # The main function to build the app
 def main():
     """Anime Recommender System"""
